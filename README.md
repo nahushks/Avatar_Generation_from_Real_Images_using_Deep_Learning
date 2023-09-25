@@ -1,7 +1,7 @@
 # Avatar_Generation_from_Real_Images_using_Deep_Learning
 Step 1: Data Collection and Pre-processing
 
-Step 2: Model Development
+Step 2: Model Development i.e
 Creating a GAN model 
 
 Step 3: Training the model
