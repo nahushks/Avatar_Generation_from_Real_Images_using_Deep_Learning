@@ -1,0 +1,102 @@
+import tensorflow as tf
+from tensorflow.keras.layers import Input, Dense, Reshape, Flatten
+from tensorflow.keras.layers import BatchNormalization, Activation, LeakyReLU
+from tensorflow.keras.layers import Conv2D, Conv2DTranspose
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.models import Model
+from tensorflow.keras.datasets import mnist  # You can replace this with your dataset loading code
+
+# Define constants
+img_rows = 128
+img_cols = 128
+channels = 3
+img_shape = (img_rows, img_cols, channels)
+latent_dim = 100  # Size of the random noise vector
+
+# Build the generator model
+def build_generator():
+    model = tf.keras.Sequential()
+    model.add(Dense(256, input_dim=latent_dim))
+    model.add(LeakyReLU(alpha=0.2))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Dense(512))
+    model.add(LeakyReLU(alpha=0.2))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Dense(1024))
+    model.add(LeakyReLU(alpha=0.2))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Dense(np.prod(img_shape), activation='tanh'))
+    model.add(Reshape(img_shape))
+    return model
+
+# Build the discriminator model
+def build_discriminator():
+    model = tf.keras.Sequential()
+    model.add(Flatten(input_shape=img_shape))
+    model.add(Dense(512))
+    model.add(LeakyReLU(alpha=0.2))
+    model.add(Dense(256))
+    model.add(LeakyReLU(alpha=0.2))
+    model.add(Dense(1, activation='sigmoid'))
+    return model
+
+# Build and compile the discriminator
+discriminator = build_discriminator()
+discriminator.compile(loss='binary_crossentropy', optimizer=Adam(0.0002, 0.5), metrics=['accuracy'])
+
+# Build and compile the generator
+generator = build_generator()
+generator.compile(loss='binary_crossentropy', optimizer=Adam(0.0002, 0.5))
+
+# Combined GAN model
+discriminator.trainable = False
+gan_input = Input(shape=(latent_dim,))
+x = generator(gan_input)
+gan_output = discriminator(x)
+gan = Model(gan_input, gan_output)
+gan.compile(loss='binary_crossentropy', optimizer=Adam(0.0002, 0.5))
+
+# Load your dataset or replace this with your dataset loading code
+# (e.g., using a DataLoader and preprocessing)
+# For simplicity, we'll use the MNIST dataset as an example.
+(X_train, _), (_, _) = mnist.load_data()
+X_train = (X_train.astype(np.float32) - 127.5) / 127.5
+X_train = np.expand_dims(X_train, axis=3)
+
+# Training loop
+batch_size = 64
+epochs = 10000
+sample_interval = 1000
+
+for epoch in range(epochs):
+    # Train the discriminator
+    idx = np.random.randint(0, X_train.shape[0], batch_size)
+    real_images = X_train[idx]
+    noise = np.random.normal(0, 1, (batch_size, latent_dim))
+    fake_images = generator.predict(noise)
+    d_loss_real = discriminator.train_on_batch(real_images, np.ones((batch_size, 1)))
+    d_loss_fake = discriminator.train_on_batch(fake_images, np.zeros((batch_size, 1)))
+    d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
+
+    # Train the generator
+    noise = np.random.normal(0, 1, (batch_size, latent_dim))
+    g_loss = gan.train_on_batch(noise, np.ones((batch_size, 1)))
+
+    # Print progress
+    print(f"Epoch {epoch}, D Loss: {d_loss[0]}, G Loss: {g_loss}")
+
+    # Save generated images at specified intervals
+    if epoch % sample_interval == 0:
+        save_generated_images(epoch)
+
+# Function to save generated images
+def save_generated_images(epoch, examples=10):
+    noise = np.random.normal(0, 1, (examples, latent_dim))
+    generated_images = generator.predict(noise)
+    generated_images = 0.5 * generated_images + 0.5  # Rescale to [0, 1]
+
+    fig, axs = plt.subplots(1, examples, figsize=(20, 2))
+    for i in range(examples):
+        axs[i].imshow(generated_images[i])
+        axs[i].axis('off')
+    plt.show()

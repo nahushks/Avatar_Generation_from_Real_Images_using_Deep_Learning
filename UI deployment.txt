@@ -1,0 +1,76 @@
+pip install Flask
+import os
+from flask import Flask, request, render_template
+from tensorflow.keras.models import load_model
+import numpy as np
+import cv2
+
+app = Flask(__name__)
+
+# Load the trained generator model
+generator = load_model('your_generator_model.h5')  # Replace with your model file
+
+# Define a function to generate avatars
+def generate_avatar(photo_path):
+    # Load and preprocess the user's photo (similar to the preprocessing used during training)
+    user_photo = cv2.imread(photo_path)
+    user_photo = cv2.cvtColor(user_photo, cv2.COLOR_BGR2RGB)
+    user_photo = cv2.resize(user_photo, (128, 128))
+    user_photo = (user_photo.astype(np.float32) - 127.5) / 127.5
+
+    # Generate an avatar using the generator model
+    noise = np.random.normal(0, 1, (1, latent_dim))
+    generated_avatar = generator.predict(noise)[0]
+
+    # Rescale generated avatar to [0, 255]
+    generated_avatar = 255 * (generated_avatar + 1) / 2
+
+    return generated_avatar.astype(np.uint8)
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        # Handle the uploaded photo and generate an avatar
+        user_photo = request.files['user_photo']
+        if user_photo:
+            photo_path = 'user_photo.jpg'  # Save the uploaded photo
+            user_photo.save(photo_path)
+
+            # Generate an avatar from the uploaded photo
+            generated_avatar = generate_avatar(photo_path)
+
+            # Cleanup: remove the uploaded photo
+            os.remove(photo_path)
+
+            # Render the result page with the generated avatar
+            return render_template('result.html', generated_avatar=generated_avatar)
+
+    # Render the upload form
+    return render_template('upload.html')
+
+if __name__ == '__main__':
+    app.run(debug=True)
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Your Photo</title>
+</head>
+<body>
+    <h1>Upload Your Photo</h1>
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="user_photo" accept="image/*">
+        <input type="submit" value="Generate Avatar">
+    </form>
+</body>
+</html>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generated Avatar</title>
+</head>
+<body>
+    <h1>Generated Avatar</h1>
+    <img src="data:image/jpeg;base64,{{ generated_avatar }}" alt="Generated Avatar">
+</body>
+</html>
+python app.py

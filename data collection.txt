@@ -1,0 +1,14 @@
+
+import cv2
+import os
+import numpy as np
+
+def load_and_preprocess_images(data_dir):
+    images = []
+    for filename in os.listdir(data_dir):
+        if filename.endswith(".jpg"):
+            image = cv2.imread(os.path.join(data_dir, filename))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # Convert to RGB
+            image = cv2.resize(image, (128, 128))  # Resize to a consistent size
+            images.append(image)
+    return np.array(images)

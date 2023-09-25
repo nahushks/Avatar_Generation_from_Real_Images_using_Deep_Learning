@@ -1,0 +1,21 @@
+import tensorflow as tf
+from tensorflow.keras.layers import Input, Conv2D, Flatten, Dense, Reshape, Conv2DTranspose
+from tensorflow.keras.models import Model
+
+# Define the generator and discriminator models (GAN architecture).
+def build_generator():
+    # Define your generator architecture here (e.g., using Conv2DTranspose layers).
+    pass
+
+def build_discriminator():
+    # Define your discriminator architecture here (e.g., using Conv2D layers).
+    pass
+
+# Combine the generator and discriminator into a GAN model.
+def build_gan(generator, discriminator):
+    discriminator.trainable = False  # Freeze discriminator weights during GAN training
+    gan_input = Input(shape=(latent_dim,))
+    x = generator(gan_input)
+    gan_output = discriminator(x)
+    gan = Model(gan_input, gan_output)
+    return gan
